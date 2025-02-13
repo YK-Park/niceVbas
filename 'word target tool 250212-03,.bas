@@ -1,4 +1,5 @@
-'word target tool 250212-02 필터추가 모든 급에서 검색하여 같은 단어는 배제했음
+'word target tool 250212-03
+'급지정도 필수로 하여, 같은 급 내에서만 검색할 수 있도록 함
 Public Sub SearchRelatedWords()
     '*** メイン処理を行うサブルーチン ***
     '*** Sheets(4)のA2に入力された単語を基に類似単語を検索し、C列以降に結果を表示する ***
@@ -18,11 +19,16 @@ Public Sub SearchRelatedWords()
     Set wsList = ThisWorkbook.Sheets("単語リスト")
     
     '*** 基準単語の取得 ***
+    '*** 検索条件のチェック ***
     targetWord = LCase(Trim(wsTarget.Range("D2").Value))
-    If targetWord = "" Then
-        MsgBox "D2セルに検索する単語を入力してください。", vbExclamation
+    Dim targetGrade As String
+    targetGrade = Trim(wsTarget.Range("C2").Value)
+
+    If targetWord = "" Or targetGrade = "" Then
+        MsgBox "C2セルに級、D2セルに検索する単語を入力してください。", vbExclamation
         Exit Sub
     End If
+    
     
     '*** 結果エリアのクリア（ヘッダー行を除く） ***
     If wsTarget.FilterMode Then
@@ -35,13 +41,16 @@ Public Sub SearchRelatedWords()
     lastRow = wsList.Cells(wsList.Rows.Count, "A").End(xlUp).Row
     resultRow = 2  '*** ヘッダー行の次から開始 ***
     
-    '*** 第一段階：類似単語の検索 ***
-    For i = 2 To lastRow
-        Dim currentWord As String
-        currentWord = LCase(Trim(wsList.Cells(i, "D").Value))
-        
-        If currentWord <> "" And currentWord <> targetWord Then
-            If CompareWords(targetWord, currentWord) Then
+   '*** 第一段階：類似単語の検索 ***
+For i = 2 To lastRow
+    Dim currentWord As String
+    Dim currentGrade As String
+    
+    currentWord = LCase(Trim(wsList.Cells(i, "D").Value))
+    currentGrade = Trim(wsList.Cells(i, "C").Value)
+    
+    If currentWord <> "" And currentWord <> targetWord And currentGrade = targetGrade Then
+        If CompareWords(targetWord, currentWord) Then
                 '*** 結果の書き込み ***
                  wsTarget.Cells(resultRow + 4, "A").Value = wsList.Cells(i, "A").Value  '級番号
                 wsTarget.Cells(resultRow + 4, "B").Value = wsList.Cells(i, "B").Value  'ユニーク番号
