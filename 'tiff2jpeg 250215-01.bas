@@ -112,7 +112,6 @@ ErrorHandler:
     Resume Next
 End Sub
 
-'待機用関数の追加
 Private Sub Wait(seconds As Single)
     Dim endTime As Single
     endTime = Timer + seconds
