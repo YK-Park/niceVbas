@@ -49,3 +49,4 @@ ContainsVowel (모음 포함 여부 확인)
 IsDoubleConsonant (이중 자음 확인)
 MeasureVC (모음-자음 시퀀스 수 측정)
 IsVowel (모음 여부 확인)
+
