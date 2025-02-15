@@ -76,25 +76,32 @@ Private Sub ProcessSingleFile(folderPath As String, fileName As String, ByRef pr
     Wait 0.5
     SendKeys folderPath & "\" & fileName, True
     SendKeys "{ENTER}", True
-    Wait 0.5
+    Wait 1
     
-    'グレースケールに変換
-    SendKeys "%i", True  'ALTでメニューを開く
-    SendKeys "g", True   'グレースケール
+    '256色ビットマップとして保存
+    SendKeys "^+s", True 'Ctrl+Shift+S
     Wait 0.5
-    
-    '同じ名前でTIFF保存
-    SendKeys "^s", True  'Ctrl+S
-    Wait 0.5
+    SendKeys fname & "_256.bmp", True
+    SendKeys "{TAB}", True
+    SendKeys "b", True   'ビットマップ選択
     SendKeys "{ENTER}", True
+    Wait 0.5
+    SendKeys "{TAB}", True
+    SendKeys "{DOWN 3}", True  '256色を選択
+    SendKeys "{ENTER}", True
+    Wait 1
     
     'JPEGとして保存
     SendKeys "^+s", True 'Ctrl+Shift+S
     Wait 0.5
-    SendKeys fname & ".jpg", True
+    SendKeys fname & "_8bit.jpg", True
     SendKeys "{TAB}", True
     SendKeys "j", True   'JPEG選択
     SendKeys "{ENTER}", True
+    Wait 1
+    
+    '画像を閉じる
+    SendKeys "%{F4}", True
     Wait 0.5
     
     Exit Sub
@@ -103,4 +110,13 @@ ErrorHandler:
     errorCount = errorCount + 1
     MsgBox "エラーが発生しました: " & fileName & vbCrLf & Err.Description, vbExclamation
     Resume Next
+End Sub
+
+'待機用関数の追加
+Private Sub Wait(seconds As Single)
+    Dim endTime As Single
+    endTime = Timer + seconds
+    Do While Timer < endTime
+        DoEvents
+    Loop
 End Sub
