@@ -56,13 +56,20 @@ Sub ConvertTiffToJpeg()
 End Sub
 
 Private Sub ProcessSingleFile(folderPath As String, fileName As String, ByRef processedFiles As Long, ByRef errorCount As Long)
-    Dim paintApp As Object
-    Dim tempFileName As String
+    Dim wsh As Object
+    Dim fname As String
     
     On Error GoTo ErrorHandler
     
-    'ペイントを起動
-    Set paintApp = CreateObject("Paint.Picture")
+    'ファイル名から拡張子を除いた名前を取得
+    fname = Left(fileName, InStrRev(fileName, ".") - 1)
+    
+    'WScript.Shellオブジェクトを作成
+    Set wsh = CreateObject("WScript.Shell")
+    
+    'ペイントウィンドウをアクティブに
+    wsh.AppActivate "ペイント"
+    Wait 0.5
     
     'TIFFファイルを開く
     SendKeys "^o", True  'Ctrl+O
@@ -88,24 +95,12 @@ Private Sub ProcessSingleFile(folderPath As String, fileName As String, ByRef pr
     SendKeys "{TAB}", True
     SendKeys "j", True   'JPEG選択
     SendKeys "{ENTER}", True
-    
-    'ペイントを終了
-    SendKeys "%{F4}", True
+    Wait 0.5
     
     Exit Sub
 
 ErrorHandler:
     errorCount = errorCount + 1
     MsgBox "エラーが発生しました: " & fileName & vbCrLf & Err.Description, vbExclamation
-    On Error Resume Next
-    SendKeys "%{F4}", True  'ペイントを終了
     Resume Next
-End Sub
-
-Private Sub Wait(seconds As Single)
-    Dim endTime As Single
-    endTime = Timer + seconds
-    Do While Timer < endTime
-        DoEvents
-    Loop
 End Sub
