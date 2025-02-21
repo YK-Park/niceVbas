@@ -79,15 +79,23 @@ Private Sub ProcessSingleFile(folderPath As String, fileName As String, ByRef pr
     Wait 1
     
     '256色ビットマップとして保存
-    SendKeys "^+s", True 'Ctrl+Shift+S
+    SendKeys "%", True    'Alt
     Wait 0.5
-    SendKeys fname & "_256.bmp", True
-    SendKeys "{TAB}", True
-    SendKeys "b", True   'ビットマップ選択
+    SendKeys "f", True    'ファイルメニュー
+    Wait 0.5
+    SendKeys "a", True    '名前を付けて保存
+    Wait 0.5
+    SendKeys fname & "_256.bmp", True  'ファイル名入力
+    Wait 0.5
+    SendKeys "{TAB}", True 'ファイルの種類へ移動
+    Wait 0.5
+    SendKeys "b", True    'ビットマップを選択
     SendKeys "{ENTER}", True
     Wait 0.5
-    SendKeys "{TAB}", True
-    SendKeys "{DOWN 3}", True  '256色を選択
+    SendKeys "{TAB}", True 'ビット数選択へ
+    Wait 0.5
+    SendKeys "{DOWN 3}", True  '256色まで移動
+    Wait 0.5
     SendKeys "{ENTER}", True
     Wait 1
     
