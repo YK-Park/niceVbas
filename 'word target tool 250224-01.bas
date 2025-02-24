@@ -1,4 +1,4 @@
-'word target tool 250221-01.bas
+'word target tool 250224-01.bas
 Option Explicit
 
 '// 語幹を取得する関数
@@ -174,7 +174,11 @@ Private Function HasSameStem(word1 As String, word2 As String, similarityThresho
     stem2Final = GetStem(word2)
     
     If Len(stem1Final) <= 3 Or Len(stem2Final) <= 3 Then
-        HasSameStem = (stem1Final = stem2Final)
+        If Len(stem1Final) < Len(stem2Final) Then
+            HasSameStem = InStr(stem2Final, stem1Final) > 0
+        Else
+            HasSameStem = InStr(stem1Final, stem2Final) > 0
+        End If
     Else
         If CheckStemInclusion(stem1Final, stem2Final) Then
             HasSameStem = True
