@@ -70,7 +70,7 @@ Function ExtractNumberedText(textContent As String) As String
     ExtractNumberedText = ResultText
 End Function
 
-Public lines() As String  ' 抽出された行を保存するString配列
+Public lines As Variant  ' Variant型で宣言しエラーを回避
 
 Sub ReadAndExtractLines(filePath As String, startKeyword As String, endKeyword As String)
     On Error GoTo ErrorHandler
@@ -79,9 +79,10 @@ Sub ReadAndExtractLines(filePath As String, startKeyword As String, endKeyword A
     Dim fileNum As Integer
     Dim byteData() As Byte
     Dim fileContent As String
-    Dim allLines As Variant
+    Dim allLines As Variant  ' Variant型で宣言
     Dim i As Long, startIndex As Long, endIndex As Long
     Dim keywordFound As Boolean
+    Dim extractedLinesCount As Long
     
     ' テキストファイルをバイナリで開いて内容を読み込む
     fileNum = FreeFile
@@ -121,8 +122,7 @@ Sub ReadAndExtractLines(filePath As String, startKeyword As String, endKeyword A
     ' キーワードが見つからなかった場合
     If Not keywordFound Then
         Debug.Print "開始キーワード '" & startKeyword & "' が見つかりませんでした"
-        ReDim lines(0 To 0)
-        lines(0) = ""
+        lines = Array("")  ' 空の配列を設定
         Exit Sub
     End If
     
@@ -132,41 +132,111 @@ Sub ReadAndExtractLines(filePath As String, startKeyword As String, endKeyword A
         Debug.Print "終了キーワード '" & endKeyword & "' が見つかりませんでした。ファイルの最後まで抽出します"
     End If
     
-    ' 抽出した行の範囲をString配列に設定
-    Dim lineCount As Long
-    lineCount = endIndex - startIndex + 1
+    ' 抽出する行の数を計算
+    extractedLinesCount = endIndex - startIndex + 1
     
-    If lineCount > 0 Then
-        ReDim lines(0 To lineCount - 1)
+    If extractedLinesCount > 0 Then
+        ' 新しい配列を作成
+        Dim extractedLines() As String
+        ReDim extractedLines(0 To extractedLinesCount - 1)
         
-        For i = 0 To lineCount - 1
-            lines(i) = allLines(startIndex + i)
+        ' 行を抽出
+        For i = 0 To extractedLinesCount - 1
+            extractedLines(i) = allLines(startIndex + i)
         Next i
         
-        Debug.Print "抽出された行数: " & lineCount & " 行"
+        ' グローバル変数に設定
+        lines = extractedLines
+        
+        Debug.Print "抽出された行数: " & extractedLinesCount & " 行"
     Else
         ' キーワード間に行がない場合
-        ReDim lines(0 To 0)
-        lines(0) = ""
+        lines = Array("")
         Debug.Print "キーワード間に行がありませんでした"
     End If
     
     Exit Sub
     
 ErrorHandler:
-    MsgBox "エラーが発生しました: " & Err.Description
+    MsgBox "エラーが発生しました: " & Err.Number & " - " & Err.Description & vbCrLf & _
+           "エラー発生箇所: " & Erl  ' 行番号を表示（行番号を設定している場合）
     On Error Resume Next
     If fileNum > 0 Then Close #fileNum
-    ReDim lines(0 To 0)
-    lines(0) = ""
+    lines = Array("")
 End Sub
+
+Function ReadTextFileContent(filePath As String) As String
+    ' ADODB.Streamを使用してテキストファイルを読み込む
+    Dim stream As Object
+    Set stream = CreateObject("ADODB.Stream")
+
+    On Error Resume Next
+    stream.Charset = "UTF-8"  ' まずUTF-8で試す
+    stream.Open
+    stream.LoadFromFile filePath
+
+    ' エラーが発生した場合やファイルサイズが大きい場合はShift-JISで試す
+    If Err.Number <> 0 Or stream.Size > 1024 Then
+        Err.Clear
+        stream.Close
+        stream.Charset = "Shift-JIS"  ' Shift-JISで試す
+        stream.Open
+        stream.LoadFromFile filePath
+    End If
+
+    ReadTextFileContent = stream.ReadText
+    stream.Close
+    Set stream = Nothing
+End Function
+
+Function ExtractTextBetweenKeywords(textContent As String, startKeyword As String, endKeyword As String) As String
+    Dim StartPos As Long, EndPos As Long
+
+    ' デバッグ情報
+    Debug.Print "テキストの長さ: " & Len(textContent) & " 文字"
+    Debug.Print "検索キーワード: " & startKeyword & " から " & endKeyword
+
+    ' キーワード間のテキストを抽出
+    StartPos = InStr(1, textContent, startKeyword)
+    If StartPos > 0 Then
+        Debug.Print "開始キーワード '" & startKeyword & "' が見つかりました。位置: " & StartPos
+
+        StartPos = StartPos + Len(startKeyword)
+        EndPos = InStr(StartPos, textContent, endKeyword)
+
+        If EndPos > 0 Then
+            Debug.Print "終了キーワード '" & endKeyword & "' が見つかりました。位置: " & EndPos
+            ExtractedText = Mid(textContent, StartPos, EndPos - StartPos)
+        Else
+            Debug.Print "終了キーワード '" & endKeyword & "' が見つかりませんでした。残りのすべてのテキストを抽出します。"
+            ExtractedText = Mid(textContent, StartPos)
+        End If
+
+        ' グローバル変数に行配列を設定
+        Lines = Split(textContent, vbCrLf)
+        If UBound(Lines) = 0 Then Lines = Split(textContent, vbLf)  ' CRのみの場合に対応
+
+        For Each Line In Lines
+            If Len(Line) > 0 Then
+                ResultText = ResultText & Line & vbCrLf
+            End If
+        Next Line
+    End If
+
+    ExtractTextBetweenKeywords = extractedText
+End Function
 
 Sub ProcessLines()
     ' 抽出された行を処理する例
     Dim i As Long
     
+    If Not IsArray(lines) Then
+        Debug.Print "有効な行配列がありません"
+        Exit Sub
+    End If
+    
     For i = LBound(lines) To UBound(lines)
-        ' ここでString配列の各行を処理
+        ' ここで配列の各行を処理
         ' 例: 特定の文字列を含む行を検索
         If InStr(lines(i), "検索キーワード") > 0 Then
             Debug.Print "一致する行: " & lines(i)
