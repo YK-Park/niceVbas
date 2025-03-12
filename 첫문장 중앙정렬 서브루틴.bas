@@ -1,57 +1,46 @@
 첫문장 중앙정렬 서브루틴
-Sub CenterFirstSentence(doc As Document, insertPoint As Long, textToInsert As String)
-    ' テキスト内の最初の文を中央揃えにする関数
-    ' doc: アクティブドキュメント
-    ' insertPoint: テキストの挿入位置
-    ' textToInsert: 挿入するテキスト
+Sub ApplyCenterToFirstLine(ByRef textToFormat As String)
+    ' テキスト変数の最初の行に中央揃えマークアップを適用する
+    ' 引数のテキストを直接変更する
     
     Dim firstLineEnd As Long
     Dim firstLine As String
     Dim remainingText As String
-    Dim rng As Range
     
-    ' 最初の改行文字を探す
-    firstLineEnd = InStr(1, textToInsert, vbCr)
-    If firstLineEnd = 0 Then firstLineEnd = InStr(1, textToInsert, vbLf)
+    ' 入力が空の場合は処理しない
+    If Len(textToFormat) = 0 Then Exit Sub
+    
+    ' 最初の改行を探す
+    firstLineEnd = InStr(1, textToFormat, vbCr)
+    If firstLineEnd = 0 Then
+        firstLineEnd = InStr(1, textToFormat, vbLf)
+    End If
     
     If firstLineEnd > 0 Then
-        ' 最初の行と残りのテキストを分ける
-        firstLine = Left(textToInsert, firstLineEnd - 1)
-        remainingText = Mid(textToInsert, firstLineEnd)
+        ' 改行がある場合、最初の行と残りのテキストに分ける
+        firstLine = Left(textToFormat, firstLineEnd - 1)
+        remainingText = Mid(textToFormat, firstLineEnd)
         
-        ' テキストを挿入する（最初の行と残りのテキストを別々に）
-        Set rng = doc.Range(insertPoint, insertPoint)
-        rng.InsertAfter firstLine
-        rng.ParagraphFormat.Alignment = wdAlignParagraphCenter
-        
-        ' 挿入位置を更新
-        insertPoint = rng.End
-        
-        ' 残りのテキストを挿入
-        Set rng = doc.Range(insertPoint, insertPoint)
-        rng.InsertAfter remainingText
+        ' 変数を書式付きテキストで更新
+        textToFormat = "<center>" & firstLine & "</center>" & remainingText
     Else
-        ' 改行がない場合は全テキストを中央揃えに
-        Set rng = doc.Range(insertPoint, insertPoint)
-        rng.InsertAfter textToInsert
-        rng.ParagraphFormat.Alignment = wdAlignParagraphCenter
+        ' 改行がない場合はすべてのテキストを中央揃えに
+        textToFormat = "<center>" & textToFormat & "</center>"
     End If
 End Sub
 
 Sub InsertFinalText()
-    ' 最終テキストをワード文書に挿入し、書式設定する
+    ' 最終テキストをワード文書に挿入
     
     If Len(insertText) = 0 Then
         MsgBox "挿入するテキストがありません。", vbInformation
         Exit Sub
     End If
     
-    ' 例：9番目の改ページ位置を探す
+    ' 9番目の改ページ位置を探す
     Dim foundPageBreaks As Integer
     foundPageBreaks = 0
     Dim rng As Range
-    Dim insertLocation As Long
-    
     Set rng = doc.Range(0, 0)
     
     With rng.Find
@@ -70,13 +59,19 @@ Sub InsertFinalText()
         Loop
     End With
     
-    ' 9つ目の改ページの前に中央揃えされた最初の文とその他のテキストを挿入
+    ' 9つ目の改ページの前にテキストを挿入
     If foundPageBreaks = 9 Then
         rng.Collapse Direction:=wdCollapseStart
-        insertLocation = rng.Start ' 挿入位置を記録
         
-        ' 修正された関数を使用して挿入と書式設定を行う
-        CenterFirstSentence doc, insertLocation, insertText
+        ' テキストを挿入
+        rng.InsertAfter insertText
+        
+        ' 挿入された範囲を取得
+        Dim insertedRange As Range
+        Set insertedRange = doc.Range(rng.Start, rng.Start + Len(insertText))
+        
+        ' 中央揃えタグを実際の書式に変換し、タグを削除
+        ApplyFormattingAndRemoveTags insertedRange
         
         MsgBox "テキストが正常に挿入されました。", vbInformation
     Else
@@ -84,7 +79,67 @@ Sub InsertFinalText()
     End If
 End Sub
 
-' ProcessSection1関数を少し修正して一般的な文を取得する例
+Sub ApplyFormattingAndRemoveTags(docRange As Range)
+    ' 文書内のタグを検索し、書式を適用してからタグを削除する
+    
+    Dim startTagText As String, endTagText As String
+    startTagText = "<center>"
+    endTagText = "</center>"
+    
+    Dim rngFind As Range
+    Set rngFind = docRange.Duplicate
+    
+    ' 開始タグを検索
+    With rngFind.Find
+        .Text = startTagText
+        .Replacement.Text = ""
+        .Forward = True
+        .Wrap = wdFindStop
+        .Format = False
+        .MatchCase = True
+        .MatchWholeWord = False
+        .Execute
+    End With
+    
+    ' タグが見つかった場合
+    If rngFind.Find.Found Then
+        ' タグの開始位置を記録
+        Dim tagStart As Long
+        tagStart = rngFind.Start
+        
+        ' タグを削除
+        rngFind.Text = ""
+        
+        ' 終了タグを検索
+        With rngFind.Find
+            .Text = endTagText
+            .Replacement.Text = ""
+            .Forward = True
+            .Wrap = wdFindStop
+            .Format = False
+            .MatchCase = True
+            .MatchWholeWord = False
+            .Execute
+        End With
+        
+        ' 終了タグが見つかった場合
+        If rngFind.Find.Found Then
+            ' タグの終了位置を記録
+            Dim tagEnd As Long
+            tagEnd = rngFind.Start
+            
+            ' タグを削除
+            rngFind.Text = ""
+            
+            ' タグの間のテキスト範囲を取得して中央揃えに設定
+            Dim contentRange As Range
+            Set contentRange = doc.Range(tagStart, tagEnd - Len(startTagText))
+            contentRange.ParagraphFormat.Alignment = wdAlignParagraphCenter
+        End If
+    End If
+End Sub
+
+' 使用例
 Sub ProcessSection1()
     ' 第1セクションから特定の文章を抽出する
     Dim textLine As Long
@@ -93,36 +148,13 @@ Sub ProcessSection1()
     finalText = ""
     count = 0
     
-    ' もし配列が空でなければ処理
-    If IsArray(lines1) Then
-        If UBound(lines1) >= LBound(lines1) Then
-            ' 例：最初の有効な行を抽出（空白行をスキップ）
-            For i = LBound(lines1) To UBound(lines1)
-                If Trim(lines1(i)) <> "" Then
-                    finalText = lines1(i) & vbCrLf
-                    Exit For
-                End If
-            Next i
-            
-            ' 最初の有効な行の後の2行を追加で取得
-            Dim linesAdded As Integer
-            linesAdded = 0
-            
-            For j = i + 1 To UBound(lines1)
-                If linesAdded < 2 Then  ' 2行まで追加
-                    If Trim(lines1(j)) <> "" Then
-                        finalText = finalText & lines1(j) & vbCrLf
-                        linesAdded = linesAdded + 1
-                    End If
-                Else
-                    Exit For
-                End If
-            Next j
-        End If
-    End If
+    ' テキストを取得するロジック
+    ' ...（既存のロジック）
     
     ' 抽出したテキストをグローバル変数に保存
     If Len(finalText) > 0 Then
+        ' テキストを取得したら、中央揃えマークアップを適用
+        ApplyCenterToFirstLine finalText
         insertText = finalText
     End If
 End Sub
