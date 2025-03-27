@@ -269,66 +269,66 @@ End Function
 ' 4. ファイル処理関数
 '====================================================================
 
-' CSVファイルから登録番号データを読み込む
-Public Function ReadCSVFile(csvFilePath As String) As Object
+' CSVファイルをワークシートにインポートし、X列のデータを読む簡単な方法
+Public Function SimpleReadXColumn(csvFilePath As String) As Object
+    ' 返却用の辞書を作成
     Dim registrationNumbers As Object
     Set registrationNumbers = CreateObject("Scripting.Dictionary")
     
-    Dim fso As Object
-    Set fso = CreateObject("Scripting.FileSystemObject")
+    ' CSVデータを保存するためのシートを準備
+    Dim ws As Worksheet
     
-    Dim csvFile As Object
-    Set csvFile = fso.OpenTextFile(csvFilePath, 1, False, -1)  ' 1=ForReading
+    ' 既存のシートがあれば削除
+    On Error Resume Next
+    Application.DisplayAlerts = False
+    ThisWorkbook.Worksheets("CSVデータ").Delete
+    Application.DisplayAlerts = True
+    On Error GoTo 0
     
-    Dim line As String
-    Dim csvValues() As String
-    Dim xIndex As Long
+    ' 新しいシートを作成
+    Set ws = ThisWorkbook.Worksheets.Add
+    ws.Name = "CSVデータ"
     
-    ' CSVファイルの1行目を読んで列のインデックスを特定
-    If Not csvFile.AtEndOfStream Then
-        line = csvFile.ReadLine
-        csvValues = Split(line, ",")
-        
-        ' X列（登録番号列）のインデックスを取得
-        xIndex = -1
-        For i = 0 To UBound(csvValues)
-            If i = 23 Then  ' X列は24番目（0から始まる場合は23）
-                xIndex = i
-                Exit For
-            End If
-        Next i
-        
-        If xIndex = -1 Then
-            MsgBox "CSVファイルにX列（登録番号列）が見つかりません。", vbExclamation
-            Set ReadCSVFile = Nothing
-            Exit Function
-        End If
-    Else
-        MsgBox "CSVファイルが空です。", vbExclamation
-        Set ReadCSVFile = Nothing
+    ' CSVファイルをインポート（標準的なExcel機能を使用）
+    With ws.QueryTables.Add(Connection:="TEXT;" & csvFilePath, Destination:=ws.Range("A1"))
+        .TextFileParseType = xlDelimited
+        .TextFileCommaDelimiter = True
+        .TextFileSemicolonDelimiter = True
+        .TextFileTabDelimiter = True
+        .Refresh
+    End With
+    
+    ' 最終行を取得
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    
+    ' X列（24列目）の値が有効か確認
+    If ws.Cells(1, 24).Value = "" Then
+        MsgBox "X列（24列目）のデータが見つかりません。", vbExclamation
+        ws.Activate  ' シートを表示して確認できるようにする
+        Set SimpleReadXColumn = Nothing
         Exit Function
     End If
     
-    ' CSVファイルの残りの行を読む
-    Do Until csvFile.AtEndOfStream
-        line = csvFile.ReadLine
-        csvValues = Split(line, ",")
+    ' X列のデータを読み込む（2行目からデータ開始と仮定）
+    Dim i As Long
+    Dim xValue As String
+    
+    For i = 2 To lastRow
+        xValue = Trim(CStr(ws.Cells(i, 24).Value))
         
-        If UBound(csvValues) >= xIndex Then
-            Dim regNum As String
-            regNum = Trim(csvValues(xIndex))
-            
-            If regNum <> "" Then
-                ' 同じ登録番号が複数ある場合は最後のものを使用
-                registrationNumbers(regNum) = line
-            End If
+        ' 空でない値のみ追加
+        If xValue <> "" Then
+            registrationNumbers(xValue) = i  ' 値と行番号を記録
         End If
-    Loop
+    Next i
     
-    csvFile.Close
+    ' 結果を表示
+    MsgBox "X列（24列目）から" & registrationNumbers.Count & "件のデータを読み込みました。", vbInformation
     
-    Set ReadCSVFile = registrationNumbers
+    Set SimpleReadXColumn = registrationNumbers
 End Function
+
 
 ' 結果ファイルの作成
 Public Sub CreateResultFile(resultFilePath As String, matchedData As Collection)
@@ -366,6 +366,14 @@ End Sub
 
 ' 標準モードの処理関数
 Public Sub ProcessFilesForStandard(csvFilePath As String, xlsxFilePath As String, resultFilePath As String)
+     ' グローバル変数に値をセット - 他の関数で参照される可能性があるため
+    g_csvFilePath = csvFilePath
+    g_xlsxFilePath = xlsxFilePath
+    g_resultFilePath = resultFilePath
+    
+    ' パターン値も抽出しておく
+    Call ExtractPatternFromFilename(xlsxFilePath)
+
     ' 進捗状況を表示
     Application.StatusBar = "標準モードでファイルを処理中..."
     Application.ScreenUpdating = False
@@ -498,6 +506,13 @@ End Sub
 
 ' 集計モード用の処理関数
 Public Sub ProcessFilesForSyukei(csvFilePath As String, xlsxFilePath As String, resultFilePath As String)
+    ' グローバル変数に値をセット - 他の関数で参照される可能性があるため
+    g_csvFilePath = csvFilePath
+    g_xlsxFilePath = xlsxFilePath
+    g_resultFilePath = resultFilePath
+    
+    ' パターン値も抽出しておく
+    Call ExtractPatternFromFilename(xlsxFilePath)
     ' 進捗状況を表示
     Application.StatusBar = "集計モードでファイルを処理中..."
     Application.ScreenUpdating = False
@@ -618,6 +633,13 @@ End Sub
 
 ' 分析モード用の処理関数 - 二つのファイルを処理してfValue基準で並べ替え
 Public Sub ProcessFilesForBunseki(csvFilePath As String, xlsxFilePath As String, resultFilePath As String)
+     ' グローバル変数に値をセット - 他の関数で参照される可能性があるため
+    g_csvFilePath = csvFilePath
+    g_xlsxFilePath = xlsxFilePath
+    g_resultFilePath = resultFilePath
+    
+    ' パターン値も抽出しておく
+    Call ExtractPatternFromFilename(xlsxFilePath)
     ' 進捗状況を表示
     Application.StatusBar = "分析モードでファイルを処理中..."
     Application.ScreenUpdating = False
@@ -732,8 +754,10 @@ ErrorHandler:
 End Sub
 
 ' XLSXファイル処理関数（再利用可能）
-Private Sub ProcessXlsxFile(ws As Object, lastRow As Long, otherWs As Object, otherLastRow As Long, _
-                           registrationNumbers As Object, ByRef matchResults() As String, ByRef matchCount As Long)
+Private Sub ProcessXlsxFile(ws As Object, lastRow As Long, otherWs As Object, 
+                            otherLastRow As Long, _
+                           registrationNumbers As Object, 
+                           ByRef matchResults() As String, ByRef matchCount As Long)
     Dim i As Long, j As Long
     
     For i = 2 To lastRow  ' ヘッダーをスキップ
