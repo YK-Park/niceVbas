@@ -1,0 +1,21 @@
+Sub RemoveAWords()
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets(1) ' 또는 해당 시트 이름으로 지정
+    
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+    
+    Dim i As Long
+    Dim aVal As String
+    Dim bVal As String, cVal As String, dVal As String, eVal As String
+    
+    For i = 1 To lastRow
+        aVal = ws.Cells(i, "A").Value
+        
+        ' A열의 내용을 B~E열에서 제거하고 G~J열에 출력
+        ws.Cells(i, "G").Value = Replace(ws.Cells(i, "B").Value, aVal, "")
+        ws.Cells(i, "H").Value = Replace(ws.Cells(i, "C").Value, aVal, "")
+        ws.Cells(i, "I").Value = Replace(ws.Cells(i, "D").Value, aVal, "")
+        ws.Cells(i, "J").Value = Replace(ws.Cells(i, "E").Value, aVal, "")
+    Next i
+End Sub
